@@ -6,10 +6,24 @@
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
+<script src="algorithm.js" ></script>
+
+
+<script>
+  let vec1 = new Vec([1,2,3]);
+  let m1 = new Matrix([[1,2,3],[4,5,6]]);
+
+  let vec3 = m1.multi(vec1);
+  console.log(vec3.arr);
+
+</script>
 <script>
     // console.log(obj_str);
     loader = new Loader(obj_str);
     let light_dir = [1,1,1];
+    let eye = [2,1,3];
+    let position = [0,0,0];
+    let up = [0,1,0];
     let width = 800;
     let height = 800;
     let canvas = document.getElementById("myCanvas");
@@ -21,30 +35,46 @@
     for(let i=0;i<width*height;i++){
         zbuffer.push(-1000000);
     }
-    // for(var x=0; x<data.width; x++) {
-    // for(var y=0; y<data.height; y++) {
-        
-    //     var val = 0;
-    //     var horz = (Math.floor(x/4) % 2 == 0); // 每四个像素循环一次
-    //     var vert = (Math.floor(y/4) % 2 == 0); // 每四个像素循环一次
-    //     if( (horz && !vert) || (!horz && vert)) {
-    //         val = 255;
-    //     } else {
-    //         val = 0;
-    //     }
-        
-    //     var index = (y*data.width+x)*4;  // 计算下标
-    //     data.data[index] = val;   // 红色通道
-    //     data.data[index+1] = val; // 绿色通道
-    //     data.data[index+2] = val; // 蓝色通道
-    //     data.data[index+3] = 255; // 设置alpha透明度为1
-    // }
-// }
-
     function dot(v1,v2){
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
 
+    function modelView(){
+        let y_vec = new Vec(up);
+        y_vec = y_vec.normal();
+        let eye_vec = new Vec(eye);
+        let position_vec = new Vec(position);
+        let z_vec = eye_vec.sub(position_vec);
+        z_vec = z_vec.normal();
+        let x_vec = cross_vec(y_vec,z_vec);
+        x_vec = x_vec.normal();
+        y_vec = cross_vec(z_vec,x_vec);
+        let r =  new Matrix(
+            [
+                [x_vec.arr[0],x_vec.arr[1],x_vec.arr[2],0],
+                [y_vec.arr[0],y_vec.arr[1],y_vec.arr[2],0],
+                [z_vec.arr[0],z_vec.arr[1],z_vec.arr[2],0],
+                [0,0,0,1],
+            ]
+        );
+        let translate = new Matrix(
+            [1,0,0,-eye[0]],
+            [0,1,0,-eye[1]],
+            [0,0,1,-eye[2]],
+            [0,0,0,1]
+        );
+        return r.multi(translate);
+    }
+    function projection(c){
+        return new Matrix(
+            [
+                [1,0,0,0],
+                [0,1,0,0],
+                [0,0,1,0],
+                [0,0,-1/c,0]
+            ]
+        );
+    }
     function draw_line(bg,ed){
         ctx.moveTo(bg[0],bg[1]);
         ctx.lineTo(ed[0],ed[1]);
@@ -56,8 +86,8 @@
         let max_y = -1000000;
         // let color = Math.random()*255;
         for(let i=0;i<3;i++){
-            let x = parseInt(tris[i][0]);
-            let y = parseInt(tris[i][1]);
+            let x = parseInt(tris[i].arr[0]);
+            let y = parseInt(tris[i].arr[1]);
             if(min_x > x){
                 min_x = x;
             }
@@ -74,11 +104,11 @@
         for(let x=min_x;x<=max_x;x++){
             for(let y=min_y;y<=max_y;y++){
                 // console.log(x+" "+y);
-                let center = binary_center(tris,[x,y]);
-                if(center[0] <= 0 || center[1] <= 0 || center[2] <= 0){
+                let center = binary_center(tris,new Vec([x,y,1]));
+                if(center.arr[0] <= 0 || center.arr[1] <= 0 || center.arr[2] <= 0){
                     continue;
                 }
-                let z = center[0] * tris[0][2] + center[1] * tris[1][2] + center[2] * tris[2][2]; 
+                let z = center.arr[0] * tris[0].arr[2] + center.arr[1] * tris[1].arr[2] + center.arr[2] * tris[2].arr[2]; 
                 // console.log(z);
                 let index = x + y * width;
                 if(zbuffer[index] < z){
@@ -101,7 +131,7 @@
         return ret;
     }
 
-    function cross(v1,v2){
+    function cross2(v1,v2){
         return v1[0] * v2[1] - v1[1] * v2[0]; 
     }
 
@@ -109,14 +139,22 @@
         return [v1[1]*v2[2]-v1[2]*v2[1],v1[0]*v2[2]-v1[2]*v2[0],v1[0]*v2[1]-v1[1]*v2[0]];
     }
 
+    function cross_vec(vec1,vec2){
+        if(vec1.arr.length == 2){
+            return cross2(vec1.arr,vec2.arr);
+        }else if(vec1.arr.length == 3){
+            return new Vec(cross3(vec1.arr,vec2.arr));
+        }
+    }
+
     function  binary_center(tri,p){
-        let ac = sub(tri[0],tri[2]);
-        let bc = sub(tri[1],tri[2]);
-        let pc = sub(p,tri[2]);
-        let alpha = cross(pc,bc)/cross(ac,bc);
-        let beta = cross(pc,ac)/cross(bc,ac);
+        let ac = tri[0].sub(tri[2]).proj(2);
+        let bc = tri[1].sub(tri[2]).proj(2);
+        let pc = p.sub(tri[2]).proj(2);
+        let alpha = cross_vec(pc,bc)/cross_vec(ac,bc);
+        let beta = cross_vec(pc,ac)/cross_vec(bc,ac);
         let gamma = 1 -alpha - beta;
-        return [alpha,beta,gamma];
+        return new Vec([alpha,beta,gamma]);
     }
 
     function length(v){
@@ -141,17 +179,18 @@
             let v = loader.vertexs[face[i]];
             let screen_coord = view([v[0],v[1]]);
             screen_coord.push(v[2]);
-            world.push(v);
-            screens.push(screen_coord);
+            world.push(new Vec(v));
+            screens.push(new Vec(screen_coord));
         }
         // console.log(world);
-        let normal = cross3(sub(world[1],world[0]),sub(world[2],world[1]));
+        let normal = cross_vec(world[1].sub(world[0]),world[2].sub(world[1]));
         // console.log(normal);
-        normal = norm(normal);
+        normal = normal.normal();
         // console.log(normal);
-        light = norm(light_dir);
-        let color = dot(light,normal);
-        // console.log(color);
+        let light_vec = new Vec(light_dir);
+        light_vec = light_vec.normal();
+        let color = light_vec.dot(normal);
+        console.log(color);
         // if(color > 0){
         triangle(screens,zbuffer,Math.abs(color));
         // }
