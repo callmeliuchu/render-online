@@ -1,0 +1,168 @@
+<html>
+<div>
+    <canvas id="myCanvas" 
+    style="border:1px solid #000000;">
+    </canvas>
+</div>
+<script src="obj.js" ></script>
+<script src="loadobj.js" ></script>
+<script>
+    // console.log(obj_str);
+    loader = new Loader(obj_str);
+    let light_dir = [1,1,1];
+    let width = 800;
+    let height = 800;
+    let canvas = document.getElementById("myCanvas");
+    canvas.height = height;
+    canvas.width = width;
+    var ctx= canvas.getContext("2d");
+    let imgdata = ctx.createImageData(width, height);
+    let zbuffer = [];
+    for(let i=0;i<width*height;i++){
+        zbuffer.push(-1000000);
+    }
+    // for(var x=0; x<data.width; x++) {
+    // for(var y=0; y<data.height; y++) {
+        
+    //     var val = 0;
+    //     var horz = (Math.floor(x/4) % 2 == 0); // 每四个像素循环一次
+    //     var vert = (Math.floor(y/4) % 2 == 0); // 每四个像素循环一次
+    //     if( (horz && !vert) || (!horz && vert)) {
+    //         val = 255;
+    //     } else {
+    //         val = 0;
+    //     }
+        
+    //     var index = (y*data.width+x)*4;  // 计算下标
+    //     data.data[index] = val;   // 红色通道
+    //     data.data[index+1] = val; // 绿色通道
+    //     data.data[index+2] = val; // 蓝色通道
+    //     data.data[index+3] = 255; // 设置alpha透明度为1
+    // }
+// }
+
+    function dot(v1,v2){
+        return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
+    }
+
+    function draw_line(bg,ed){
+        ctx.moveTo(bg[0],bg[1]);
+        ctx.lineTo(ed[0],ed[1]);
+    }
+    function triangle(tris,zbuffer,color){
+        let min_x = 1000000;
+        let max_x = -1000000;
+        let min_y = 1000000;
+        let max_y = -1000000;
+        // let color = Math.random()*255;
+        for(let i=0;i<3;i++){
+            let x = parseInt(tris[i][0]);
+            let y = parseInt(tris[i][1]);
+            if(min_x > x){
+                min_x = x;
+            }
+            if(max_x < x){
+                max_x = x;
+            }
+            if(min_y > y){
+                min_y = y;
+            }
+            if(max_y < y){
+                max_y = y;
+            }
+        }
+        for(let x=min_x;x<=max_x;x++){
+            for(let y=min_y;y<=max_y;y++){
+                // console.log(x+" "+y);
+                let center = binary_center(tris,[x,y]);
+                if(center[0] <= 0 || center[1] <= 0 || center[2] <= 0){
+                    continue;
+                }
+                let z = center[0] * tris[0][2] + center[1] * tris[1][2] + center[2] * tris[2][2]; 
+                // console.log(z);
+                let index = x + y * width;
+                if(zbuffer[index] < z){
+                    zbuffer[index] = z;
+                    let idx = 4*index;
+                    imgdata.data[idx] =  color*255;
+                    imgdata.data[idx+1] =  color*255;
+                    imgdata.data[idx+2] =  color*255;
+                    imgdata.data[idx+3] = 255;
+                }
+
+            }
+        }
+    }
+    function sub(v1,v2){
+        ret = []
+        for(let i=0;i<v1.length;i++){
+            ret.push(v1[i]-v2[i]);
+        }
+        return ret;
+    }
+
+    function cross(v1,v2){
+        return v1[0] * v2[1] - v1[1] * v2[0]; 
+    }
+
+    function cross3(v1,v2){
+        return [v1[1]*v2[2]-v1[2]*v2[1],v1[0]*v2[2]-v1[2]*v2[0],v1[0]*v2[1]-v1[1]*v2[0]];
+    }
+
+    function  binary_center(tri,p){
+        let ac = sub(tri[0],tri[2]);
+        let bc = sub(tri[1],tri[2]);
+        let pc = sub(p,tri[2]);
+        let alpha = cross(pc,bc)/cross(ac,bc);
+        let beta = cross(pc,ac)/cross(bc,ac);
+        let gamma = 1 -alpha - beta;
+        return [alpha,beta,gamma];
+    }
+
+    function length(v){
+        return Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+    }
+
+    function norm(v){
+        let l = length(v);
+        return [v[0]/l,v[1]/l,v[2]/l];
+    }
+
+
+    function view(v){
+        return [width-(v[0]+1)*width/2,height-(v[1]+1)*height/2];
+    }
+    let count = 0;
+    for(let face of loader.faces){
+        count += 1;
+        let screens = [];
+        let world = [];
+        for(let i=0;i<3;i++){
+            let v = loader.vertexs[face[i]];
+            let screen_coord = view([v[0],v[1]]);
+            screen_coord.push(v[2]);
+            world.push(v);
+            screens.push(screen_coord);
+        }
+        // console.log(world);
+        let normal = cross3(sub(world[1],world[0]),sub(world[2],world[1]));
+        // console.log(normal);
+        normal = norm(normal);
+        // console.log(normal);
+        light = norm(light_dir);
+        let color = dot(light,normal);
+        // console.log(color);
+        // if(color > 0){
+        triangle(screens,zbuffer,Math.abs(color));
+        // }
+        // break;
+        // draw_line(tri[0],tri[1]);
+        // draw_line(tri[1],tri[2]);
+        // draw_line(tri[2],tri[0]);
+    }
+    // console.log(imgdata.data);
+    ctx.putImageData(imgdata, 0, 0);
+    // ctx.stroke();
+</script>
+
+</html>
