@@ -39,7 +39,7 @@
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
 
-    function modelView(){
+    function modelView(eye){
         let y_vec = up;
         y_vec = y_vec.normal();
         let eye_vec = eye;
@@ -124,9 +124,9 @@
                 if(zbuffer[index] < z){
                     zbuffer[index] = z;
                     let idx = 4*index;
-                    imgdata.data[idx] =  color*255;
-                    imgdata.data[idx+1] =  color*255;
-                    imgdata.data[idx+2] =  color*255;
+                    imgdata.data[idx] =  Math.abs(z*255);
+                    imgdata.data[idx+1] =  Math.abs(z*255);
+                    imgdata.data[idx+2] =  Math.abs(z*255);
                     imgdata.data[idx+3] = 255;
                 }
 
@@ -187,32 +187,51 @@
         );
     }
 
-    let modelViewMatrix = modelView();
-    let projMatrix = projection(eye.sub(position).length());
-    let viewMatrix = view();
-
-
-    let count = 0;
-    for(let face of loader.faces){
-        count += 1;
-        let screens = [];
-        let world = [];
-        for(let i=0;i<3;i++){
-            let v = loader.vertexs[face[i]];
-            let vec = new Vec(v);
-            vec = vec.embed(4);
-            let screen_coord = viewMatrix.multi(projMatrix).multi(modelViewMatrix).multi(vec);
-            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
-            world.push(new Vec(v));
-            screens.push(screen_coord);
-        }
-        let normal = cross_vec(world[1].sub(world[0]),world[2].sub(world[1]));
-        normal = normal.normal();
-        light_vec = light_dir.normal();
-        let color = light_vec.dot(normal);
-        triangle(screens,zbuffer,Math.abs(color));
+    function rotate(angle){
+        return new Matrix(
+            [
+                [Math.cos(angle),0,-Math.sin(angle),0],
+                [0,1,0,0],
+                [Math.sin(angle),0,Math.cos(angle),0],
+                [0,0,0,1]
+            ]
+        );
     }
-    ctx.putImageData(imgdata, 0, 0);
+
+    
+    let viewMatrix = view();
+    // let M = viewMatrix.multi();
+    let time = 100;
+    setInterval(() => {
+
+        eye = rotate(time).multi(eye.embed(4)).proj(3);
+        let modelViewMatrix = modelView(eye);
+        let projMatrix = projection(eye.sub(position).length());
+        let MP = projMatrix.multi(modelViewMatrix);
+        imgdata = ctx.createImageData(width, height);
+        let M = viewMatrix.multi(MP);
+        time += 1;
+        for(let face of loader.faces){
+                let screens = [];
+                let world = [];
+                for(let i=0;i<3;i++){
+                    let v = loader.vertexs[face[i]];
+                    let vec = new Vec(v);
+                    vec = vec.embed(4);
+                    let screen_coord = M.multi(vec);
+                    screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+                    world.push(new Vec(v));
+                    screens.push(screen_coord);
+                }
+                let normal = cross_vec(world[1].sub(world[0]),world[2].sub(world[1]));
+                normal = normal.normal();
+                light_vec = light_dir.normal();
+                let color = light_vec.dot(normal);
+                triangle(screens,zbuffer,color);
+            }
+            ctx.putImageData(imgdata, 0, 0);
+    }
+    , 1000);
 </script>
 
 </html>
