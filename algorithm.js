@@ -22,7 +22,7 @@ class Vec{
     div(other){
         let ret = new Vec(this.n);
         for(let i=0;i<this.n;i++){
-            ret.arr[i] = this.arr[i] / other.arr[i];
+            ret.arr[i] = this.arr[i]/other;
         }
         return ret;
     }
@@ -71,6 +71,18 @@ class Vec{
         }
         return ans;
     }
+    embed(k){
+        let ans = new Vec(k);
+        for(let i=0;i<k;i++){
+            if(i < this.n){
+                ans.arr[i] = this.arr[i];
+            }else{
+                ans.arr[i] = 1;
+            }
+            
+        }
+        return ans;
+    }
 }
 
 class Matrix{
@@ -105,14 +117,16 @@ class Matrix{
     }
 
     multiMatrix(matrix){
-        let res = new Matrix(this.m,matrix.n);
+        let ans = [];
         for(let i=0;i<this.m;i++){
+            let tmp = []
             for(let j=0;j<matrix.n;j++){
                 let val = this.arr[i].dot(matrix.get_col(j));
-                res.arr[i].arr[j] = val;
+                tmp.push(val);
             }
+            ans.push(tmp);
         }
-        return res;
+        return new Matrix(ans);
     }
 
     multi(input){

@@ -20,10 +20,10 @@
 <script>
     // console.log(obj_str);
     loader = new Loader(obj_str);
-    let light_dir = [1,1,1];
-    let eye = [2,1,3];
-    let position = [0,0,0];
-    let up = [0,1,0];
+    let light_dir = new Vec([1,1,1]);
+    let eye = new Vec([0,0,0.5]);
+    let position = new Vec([0,0,0]);
+    let up = new Vec([0,1,0]);
     let width = 800;
     let height = 800;
     let canvas = document.getElementById("myCanvas");
@@ -40,10 +40,10 @@
     }
 
     function modelView(){
-        let y_vec = new Vec(up);
+        let y_vec = up;
         y_vec = y_vec.normal();
-        let eye_vec = new Vec(eye);
-        let position_vec = new Vec(position);
+        let eye_vec = eye;
+        let position_vec = position;
         let z_vec = eye_vec.sub(position_vec);
         z_vec = z_vec.normal();
         let x_vec = cross_vec(y_vec,z_vec);
@@ -58,22 +58,32 @@
             ]
         );
         let translate = new Matrix(
-            [1,0,0,-eye[0]],
-            [0,1,0,-eye[1]],
-            [0,0,1,-eye[2]],
+            [[1,0,0,-eye.arr[0]],
+            [0,1,0,-eye.arr[1]],
+            [0,0,1,-eye.arr[2]],
             [0,0,0,1]
+            ]
         );
         return r.multi(translate);
     }
-    function projection(c){
-        return new Matrix(
+    function projection(c,t){
+        let sqush = new Matrix(
             [
                 [1,0,0,0],
                 [0,1,0,0],
                 [0,0,1,0],
-                [0,0,-1/c,0]
+                [0,0,-1/c,1]
             ]
         );
+        let translate = new Matrix(
+            [
+                [1,0,0,0],
+                [0,1,0,0],
+                [0,0,1,-c],
+                [0,0,0,1]
+            ]
+        );
+        return sqush.multi(translate);
     }
     function draw_line(bg,ed){
         ctx.moveTo(bg[0],bg[1]);
@@ -167,9 +177,21 @@
     }
 
 
-    function view(v){
-        return [width-(v[0]+1)*width/2,height-(v[1]+1)*height/2];
+    function view(){
+        // return [width-(v[0]+1)*width/2,height-(v[1]+1)*height/2];
+        return new Matrix(
+            [[width/2,0,0,width/2],
+            [0,height/2,0,height/2],
+            [0,0,1,0],
+            [0,0,0,1]]
+        );
     }
+
+    let modelViewMatrix = modelView();
+    let projMatrix = projection(eye.sub(position).length());
+    let viewMatrix = view();
+
+
     let count = 0;
     for(let face of loader.faces){
         count += 1;
@@ -177,31 +199,20 @@
         let world = [];
         for(let i=0;i<3;i++){
             let v = loader.vertexs[face[i]];
-            let screen_coord = view([v[0],v[1]]);
-            screen_coord.push(v[2]);
+            let vec = new Vec(v);
+            vec = vec.embed(4);
+            let screen_coord = viewMatrix.multi(projMatrix).multi(modelViewMatrix).multi(vec);
+            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
             world.push(new Vec(v));
-            screens.push(new Vec(screen_coord));
+            screens.push(screen_coord);
         }
-        // console.log(world);
         let normal = cross_vec(world[1].sub(world[0]),world[2].sub(world[1]));
-        // console.log(normal);
         normal = normal.normal();
-        // console.log(normal);
-        let light_vec = new Vec(light_dir);
-        light_vec = light_vec.normal();
+        light_vec = light_dir.normal();
         let color = light_vec.dot(normal);
-        console.log(color);
-        // if(color > 0){
         triangle(screens,zbuffer,Math.abs(color));
-        // }
-        // break;
-        // draw_line(tri[0],tri[1]);
-        // draw_line(tri[1],tri[2]);
-        // draw_line(tri[2],tri[0]);
     }
-    // console.log(imgdata.data);
     ctx.putImageData(imgdata, 0, 0);
-    // ctx.stroke();
 </script>
 
 </html>
