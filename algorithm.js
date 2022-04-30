@@ -13,11 +13,20 @@ class Vec{
 
     }
     multi(other){
-        let ret = new Vec(this.n);
-        for(let i=0;i<this.n;i++){
-            ret.arr[i] = this.arr[i] * other.arr[i];
+        if(other instanceof Vec){
+            let ret = new Vec(this.n);
+            for(let i=0;i<this.n;i++){
+                ret.arr[i] = this.arr[i] * other.arr[i];
+            }
+            return ret;
+        }else if(typeof other === "number"){
+            let ret = new Vec(this.n);
+            for(let i=0;i<this.n;i++){
+                ret.arr[i] = this.arr[i] * other;
+            }
+            return ret;
         }
-        return ret;
+
     }
     div(other){
         let ret = new Vec(this.n);
@@ -128,13 +137,55 @@ class Matrix{
         }
         return new Matrix(ans);
     }
+    
+    multiNum(val){
+        let tmp = [];
+        for(let i=0;i<this.m;i++){
+            let x = [];
+            for(let j=0;j<this.n;j++){
+                x.push(this.arr[i].arr[j]*val);
+            }
+            tmp.push(x);
+        }
+        return new Matrix(tmp);
+    }
 
     multi(input){
         if(input instanceof Vec){
             return this.multiVec(input);
         }else if(input instanceof Matrix){
             return this.multiMatrix(input);
+        }else if(typeof input === 'number'){
+            return this.multiNum(input);
         }
+    }
+
+    add(matrix){
+        let tmp = [];
+        for(let i=0;i<this.m;i++){
+            let x = [];
+            for(let j=0;j<this.n;j++){
+                x.push(this.arr[i].arr[j]+matrix.arr[i].arr[j]);
+            }
+            tmp.push(x);
+        }
+        return new Matrix(tmp);
+    }
+
+    static I(m){
+        let tmp = [];
+        for(let i=0;i<m;i++){
+            let x = [];
+            for(let j=0;j<m;j++){
+                if(i == j){
+                    x.push(1);
+                }else{
+                    x.push(0);
+                }
+            }
+            tmp.push(x);
+        }
+        return new Matrix(tmp);
     }
 
 }

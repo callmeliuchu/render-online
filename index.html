@@ -163,16 +163,43 @@
         );
     }
 
-    function rotate(angle){
+    function rotate(vec,angle){
         angle = Math.PI * angle / 180;
-        return new Matrix(
+        let m1 = Matrix.I(4).multi(Math.cos(angle));
+        let x = vec.arr[0];
+        let y = vec.arr[1];
+        let z = vec.arr[2];
+        let m2 = new Matrix(
             [
-                [Math.cos(angle),0,-Math.sin(angle),0],
-                [0,1,0,0],
-                [Math.sin(angle),0,Math.cos(angle),0],
+                [x*x,x*y,x*z,0],
+                [y*x,y*y,y*z,0],
+                [z*x,z*y,z*z,0],
                 [0,0,0,1]
             ]
         );
+        m2 = m2.multi(1-Math.cos(angle));
+        let m3 = new Matrix(
+            [
+                [0,-z,y,0],
+                [-z,0,x,0],
+                [-y,x,0,0],
+                [0,0,0,1]
+            ]
+        );
+        m3 = m3.multi(Math.sin(angle));
+        let m4 = m1.add(m2).add(m3);
+        m4.arr[3].arr[3] = 1;
+        return m4;
+
+
+        // return new Matrix(
+        //     [
+        //         [Math.cos(angle),0,-Math.sin(angle),0],
+        //         [0,1,0,0],
+        //         [Math.sin(angle),0,Math.cos(angle),0],
+        //         [0,0,0,1]
+        //     ]
+        // );
     }
 
     
@@ -182,6 +209,8 @@
     let modelViewMatrix = modelView(eye);
     let projMatrix = projection(eye.sub(position).length());
     let MP = projMatrix.multi(modelViewMatrix);
+    let r_vec = new Vec([2,3,1]);
+    r_vec = r_vec.normal();
     setInterval(() => {
         // eye = rotate(time).multi(eye.embed(4)).proj(3);
         let imgdata = ctx.createImageData(width, height);
@@ -189,7 +218,7 @@
         for(let i=0;i<width*height;i++){
             zbuffer.push(-1000000);
         }
-        let M = viewMatrix.multi(rotate(time)).multi(MP);
+        let M = viewMatrix.multi(rotate(r_vec,time)).multi(MP);
         time += 10;
         for(let face of loader.faces){
                 let screens = [];
