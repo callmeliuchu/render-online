@@ -171,21 +171,20 @@ class Matrix{
         }
         return new Matrix(tmp);
     }
+}
 
-    static I(m){
-        let tmp = [];
-        for(let i=0;i<m;i++){
-            let x = [];
-            for(let j=0;j<m;j++){
-                if(i == j){
-                    x.push(1);
-                }else{
-                    x.push(0);
-                }
+function I(m){
+    let tmp = [];
+    for(let i=0;i<m;i++){
+        let x = [];
+        for(let j=0;j<m;j++){
+            if(i == j){
+                x.push(1);
+            }else{
+                x.push(0);
             }
-            tmp.push(x);
         }
-        return new Matrix(tmp);
+        tmp.push(x);
     }
-
+    return new Matrix(tmp);
 }

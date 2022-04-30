@@ -165,31 +165,35 @@
 
     function rotate(vec,angle){
         angle = Math.PI * angle / 180;
-        let m1 = Matrix.I(4).multi(Math.cos(angle));
+        let m1 = I(3).multi(Math.cos(angle));
         let x = vec.arr[0];
         let y = vec.arr[1];
         let z = vec.arr[2];
         let m2 = new Matrix(
             [
-                [x*x,x*y,x*z,0],
-                [y*x,y*y,y*z,0],
-                [z*x,z*y,z*z,0],
-                [0,0,0,1]
+                [x*x,x*y,x*z],
+                [y*x,y*y,y*z],
+                [z*x,z*y,z*z]
             ]
         );
         m2 = m2.multi(1-Math.cos(angle));
         let m3 = new Matrix(
             [
-                [0,-z,y,0],
-                [-z,0,x,0],
-                [-y,x,0,0],
-                [0,0,0,1]
+                [0,-z,y],
+                [z,0,-x],
+                [-y,x,0]
             ]
         );
         m3 = m3.multi(Math.sin(angle));
         let m4 = m1.add(m2).add(m3);
-        m4.arr[3].arr[3] = 1;
-        return m4;
+        return new Matrix(
+            [
+                [m4.arr[0].arr[0],m4.arr[0].arr[1],m4.arr[0].arr[2],0],
+                [m4.arr[1].arr[0],m4.arr[1].arr[1],m4.arr[1].arr[2],0],
+                [m4.arr[2].arr[0],m4.arr[2].arr[1],m4.arr[2].arr[2],0],
+                [0,0,0,1]
+            ]
+        );
 
 
         // return new Matrix(
@@ -209,7 +213,7 @@
     let modelViewMatrix = modelView(eye);
     let projMatrix = projection(eye.sub(position).length());
     let MP = projMatrix.multi(modelViewMatrix);
-    let r_vec = new Vec([2,3,1]);
+    let r_vec = new Vec([1,1,1]);
     r_vec = r_vec.normal();
     setInterval(() => {
         // eye = rotate(time).multi(eye.embed(4)).proj(3);
