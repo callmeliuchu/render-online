@@ -21,8 +21,11 @@
     // console.log(obj_str);
     loader = new Loader(obj_str);
     let light_dir = new Vec([1,1,1]);
-    let eye = new Vec([0,0,0.5]);
-    let position = new Vec([0,0,0]);
+    let eye = new Vec([0,0,2]);
+    let position = new Vec(loader.center);
+    console.log(loader.center);
+    console.log(loader.max_position);
+    console.log(loader.min_position);
     let up = new Vec([0,1,0]);
     let width = 800;
     let height = 800;
@@ -30,11 +33,7 @@
     canvas.height = height;
     canvas.width = width;
     var ctx= canvas.getContext("2d");
-    let imgdata = ctx.createImageData(width, height);
-    let zbuffer = [];
-    for(let i=0;i<width*height;i++){
-        zbuffer.push(-1000000);
-    }
+    // let imgdata = ctx.createImageData(width, height);
     function dot(v1,v2){
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
@@ -66,30 +65,22 @@
         );
         return r.multi(translate);
     }
-    function projection(c,t){
+    function projection(c){
         let sqush = new Matrix(
             [
                 [1,0,0,0],
                 [0,1,0,0],
-                [0,0,1,0],
+                [0,0,1,c],
                 [0,0,-1/c,1]
             ]
         );
-        let translate = new Matrix(
-            [
-                [1,0,0,0],
-                [0,1,0,0],
-                [0,0,1,-c],
-                [0,0,0,1]
-            ]
-        );
-        return sqush.multi(translate);
+        return sqush;
     }
     function draw_line(bg,ed){
         ctx.moveTo(bg[0],bg[1]);
         ctx.lineTo(ed[0],ed[1]);
     }
-    function triangle(tris,zbuffer,color){
+    function triangle(tris,zbuffer,color,imgdata){
         let min_x = 1000000;
         let max_x = -1000000;
         let min_y = 1000000;
@@ -124,21 +115,14 @@
                 if(zbuffer[index] < z){
                     zbuffer[index] = z;
                     let idx = 4*index;
-                    imgdata.data[idx] =  Math.abs(z*255);
-                    imgdata.data[idx+1] =  Math.abs(z*255);
-                    imgdata.data[idx+2] =  Math.abs(z*255);
+                    imgdata.data[idx] =  Math.abs(color*255);
+                    imgdata.data[idx+1] =  Math.abs(color*255);
+                    imgdata.data[idx+2] =  Math.abs(color*255);
                     imgdata.data[idx+3] = 255;
                 }
 
             }
         }
-    }
-    function sub(v1,v2){
-        ret = []
-        for(let i=0;i<v1.length;i++){
-            ret.push(v1[i]-v2[i]);
-        }
-        return ret;
     }
 
     function cross2(v1,v2){
@@ -188,6 +172,7 @@
     }
 
     function rotate(angle){
+        angle = Math.PI * angle / 180;
         return new Matrix(
             [
                 [Math.cos(angle),0,-Math.sin(angle),0],
@@ -202,15 +187,18 @@
     let viewMatrix = view();
     // let M = viewMatrix.multi();
     let time = 100;
+    let modelViewMatrix = modelView(eye);
+    let projMatrix = projection(eye.sub(position).length());
+    let MP = projMatrix.multi(modelViewMatrix);
     setInterval(() => {
-
-        eye = rotate(time).multi(eye.embed(4)).proj(3);
-        let modelViewMatrix = modelView(eye);
-        let projMatrix = projection(eye.sub(position).length());
-        let MP = projMatrix.multi(modelViewMatrix);
-        imgdata = ctx.createImageData(width, height);
-        let M = viewMatrix.multi(MP);
-        time += 1;
+        // eye = rotate(time).multi(eye.embed(4)).proj(3);
+        let imgdata = ctx.createImageData(width, height);
+        let zbuffer = [];
+        for(let i=0;i<width*height;i++){
+            zbuffer.push(-1000000);
+        }
+        let M = viewMatrix.multi(rotate(time)).multi(MP);
+        time += 10;
         for(let face of loader.faces){
                 let screens = [];
                 let world = [];
@@ -227,11 +215,11 @@
                 normal = normal.normal();
                 light_vec = light_dir.normal();
                 let color = light_vec.dot(normal);
-                triangle(screens,zbuffer,color);
+                triangle(screens,zbuffer,color,imgdata);
             }
             ctx.putImageData(imgdata, 0, 0);
     }
-    , 1000);
+    , 100);
 </script>
 
 </html>
