@@ -7,7 +7,20 @@
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
 <script src="algorithm.js" ></script>
-
+<!-- <script>
+    let mat = new Matrix(
+        [
+            [1,0,0],
+            [1,5,0],
+            [1,5,1]
+        ]
+    );
+    let m_in = mat.inverse();
+    console.log(mat.det());
+    console.log(m_in);
+    console.log(m_in.det());
+    console.log(mat.multi(m_in));
+</script> -->
 
 <script>
     // console.log(obj_str);
@@ -202,8 +215,13 @@
     // let M = viewMatrix.multi();
     let time = 100;
     let modelViewMatrix = modelView(eye);
+    let MIT = modelViewMatrix.inverse().transpose();
     let projMatrix = projection(eye.sub(position).length());
     let MP = projMatrix.multi(modelViewMatrix);
+    let light_vec = light_dir.normal();
+    // light_vec = MIT.multi(light_vec);
+    // light_vec = light_vec.div(light_vec.arr[3]).proj(3);
+    // light_vec = light_vec.normal();
     let r_vec = new Vec([0,1,0]);
     r_vec = r_vec.normal();
     setInterval(() => {
@@ -227,20 +245,17 @@
                     screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
                     world.push(new Vec(v));
                     screens.push(screen_coord);
-                    normals.push(loader.getNormal(k,i));
+                    let nn = new Vec(loader.getNormal(k,i)).normal();
+                    // nn = MIT.multi(nn.embed(4));
+                    // nn = nn.div(nn.arr[3]).proj(3);
+                    normals.push(nn);
                 }
-                light_vec = light_dir.normal();
+                
                 let intensities = [];
                 for(let i=0;i<3;i++){
-                    let ni = new Vec(normals[i]);
-                    ni = ni.normal();
-                    intensities.push(Math.max(ni.dot(light_vec),0));
+                    intensities.push(Math.max(normals[i].dot(light_vec),0));
                 }
                 intensities = new Vec(intensities);
-                // let normal = cross_vec(world[1].sub(world[0]),world[2].sub(world[1]));
-                // normal = normal.normal();
-                // light_vec = light_dir.normal();
-                // let color = light_vec.dot(normal);
                 triangle(screens,zbuffer,intensities,imgdata);
             }
             ctx.putImageData(imgdata, 0, 0);

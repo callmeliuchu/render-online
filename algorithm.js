@@ -171,6 +171,75 @@ class Matrix{
         }
         return new Matrix(tmp);
     }
+
+    det(){
+        if(this.m == 2){
+            return this.arr[0].arr[0]*this.arr[1].arr[1] - this.arr[0].arr[1]*this.arr[1].arr[0];
+        }
+        let ans = 0;
+        for(let j=0;j<this.n;j++){
+            let val = this.arr[0].arr[j]*this.Astartij(0,j);
+            ans += val;
+        }
+        return ans;
+    }
+
+    inverse(){
+        let astart = this.AstartT().transpose();
+        let det_val = this.det();
+        return astart.multiNum(1/det_val);
+    }
+
+    transpose(){
+        let ans = [];
+        for(let j=0;j<this.n;j++){
+            let tmp = [];
+            for(let i=0;i<this.m;i++){
+                tmp.push(this.arr[i].arr[j]);
+            }
+            ans.push(tmp);
+        }
+        return new Matrix(ans);
+    }
+
+
+    Astartij(i1,j1){
+        let ans = [];
+        for(let i=0;i<this.m;i++){
+            if(i == i1){
+                continue;
+            }
+            let tmp = [];
+            for(let j=0;j<this.n;j++){
+                if(j == j1){
+                    continue;
+                }
+                tmp.push(this.arr[i].arr[j]);
+            }
+            if(tmp.length > 0){
+                ans.push(tmp);
+            }
+        }
+        let mat = new Matrix(ans);
+        if((i1+j1)%2 == 0){
+            return mat.det();
+        }else{
+            return -1*mat.det();
+        }
+    }
+
+    AstartT(){
+        let ans = [];
+        for(let i=0;i<this.m;i++){
+            let tmp = [];
+            for(let j=0;j<this.n;j++){
+                tmp.push(this.Astartij(i,j));
+            }
+            ans.push(tmp);
+        }
+        return new Matrix(ans);
+    }
+
 }
 
 function I(m){
