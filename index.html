@@ -4,7 +4,7 @@
     style="border:1px solid #000000;">
     </canvas>
     <canvas id="uvCanvas"  style="display: none;">
-        <img src="./african_diffuse1.jpg" id="uv"></img>
+        <img src="./african_diffuse.jpg" id="uv"></img>
     </canvas>
 </div>
 <script src="obj.js" ></script>
@@ -313,7 +313,7 @@
     let light_vec = light_dir.normal();
     let r_vec = new Vec([0,1,0]);
     r_vec = r_vec.normal();
-    
+
     setInterval(() => {
         let imgdata = ctx.createImageData(width, height);
         let zbuffer = [];
