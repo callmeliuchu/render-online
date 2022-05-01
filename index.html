@@ -26,8 +26,8 @@
 </script> -->
 
 <script>
-    let width =  300;
-    let height = 300;
+    let width =  800;
+    let height = 800;
     let uvcanvas = document.getElementById("uvCanvas");
     var ctxt = uvcanvas.getContext('2d');
     var img = document.getElementById("uv");
@@ -222,15 +222,7 @@
         )
     }
 
-    let viewMatrix = view();
-    // let M = viewMatrix.multi();
-    let time = 100;
-    let modelViewMatrix = modelView(eye);
-    let projMatrix = projection(eye.sub(position).length());
-    let MP = projMatrix.multi(modelViewMatrix);
-    let light_vec = light_dir.normal();
-    let r_vec = new Vec([0,1,0]);
-    r_vec = r_vec.normal();
+
 
     class Color{
         constructor(val1,val2,val3){
@@ -243,6 +235,15 @@
             this.g = val;
             this.b = val;  
         }
+    }
+
+    function diffuseUV(uv_coord){
+        let uu = parseInt(uv_coord[0]*img_width+0.5);
+        let vv = img_height-parseInt(uv_coord[1]*img_height+0.5);
+        let idx = uu + vv * img_width;
+        idx = idx*4;
+        // console.log(uu+" "+vv+" "+idx);
+        return [uvData.data[idx],uvData.data[idx+1],uvData.data[idx+2]];
     }
 
     class Shader{
@@ -266,7 +267,8 @@
 
         fragment(binary){
             let intensity = this.intensities.dot(binary);
-            return new Color(intensity * 255);
+            let c = intensity * 255;
+            return new Color(c,c,c);
         }
     }
 
@@ -280,18 +282,11 @@
             this.uvs = [];
         }
         vertex(f_id,nthvertex){
-            let uv_coord = loader.getUV(f_id,nthvertex);
-            let uu = parseInt(uv_coord[0]*img_width+0.5);
-            let vv = img_height-parseInt(uv_coord[1]*img_height+0.5);
-            let idx = uu + vv * img_width;
-            idx = idx*4;
-            // console.log(uu+" "+vv+" "+idx);
-            let color = [uvData.data[idx],uvData.data[idx+1],uvData.data[idx+2]];
-            this.uvs[nthvertex] = color;
+            this.uvs[nthvertex] = loader.getUV(f_id,nthvertex);
 
-            // let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
-            // nn = nn.div(nn.arr[3]).normal();
-            // this.intensities.arr[nthvertex] = Math.max(light_vec.dot(nn),0);
+            let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
+            nn = nn.div(nn.arr[3]).normal();
+            this.intensities.arr[nthvertex] = Math.max(light_vec.dot(nn),0);
             let v = loader.getVertex(f_id,nthvertex);
             let vec = new Vec(v);
             vec = vec.embed(4);
@@ -301,11 +296,24 @@
         }
 
         fragment(binary){
+            let intensity = this.intensities.dot(binary);
             let uvs = new Matrix(this.uvs);
-            let color = uvs.transpose().multi(binary);
-            return new Color(color.arr[0],color.arr[1],color.arr[2]);
+            let uv = uvs.transpose().multi(binary);
+            let color = diffuseUV(uv.arr);
+            return new Color(color[0]*intensity,color[1]*intensity,color[2]*intensity);
         }
     }
+
+    let viewMatrix = view();
+    // let M = viewMatrix.multi();
+    let time = 100;
+    let modelViewMatrix = modelView(eye);
+    let projMatrix = projection(eye.sub(position).length());
+    let MP = projMatrix.multi(modelViewMatrix);
+    let light_vec = light_dir.normal();
+    let r_vec = new Vec([0,1,0]);
+    r_vec = r_vec.normal();
+    
     setInterval(() => {
         let imgdata = ctx.createImageData(width, height);
         let zbuffer = [];
