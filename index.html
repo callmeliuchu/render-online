@@ -3,6 +3,11 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
+    <canvas id="uvCanvas" width="400" height="400" style="border:1px solid #000000;">
+        <img src="african_diffuse1.jpg" id="uv"></img>
+    </canvas>
+    <canvas id="uv1Canvas" width="400" height="400" style="border:1px solid #000000;">
+    </canvas>
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
@@ -23,13 +28,32 @@
 </script> -->
 
 <script>
+    let width = 400;
+    let height = 400;
+
+    let uvcanvas = document.getElementById("uvCanvas");
+    var ctxt = uvcanvas.getContext('2d');
+    var img = document.getElementById("uv");
+    ctxt.drawImage(img, 0,0, width, height);
+    let uvData = ctxt.getImageData(0, 0, width, height);
+
+    console.log(uvData);
+    let uvcanvas1 = document.getElementById("uv1Canvas");
+    var ctxt1 = uvcanvas1.getContext('2d');
+    ctxt1.putImageData(uvData, 0, 0);
+    
+
+    // img.src = 'african_diffuse1.jpg';//src也可以是从文件选择控件中取得。
+    
+</script>
+
+
+<script>
     loader = new Loader(obj_str);
     let light_dir = new Vec([1,1,1]);
     let eye = new Vec([0,0,2]);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
-    let width = 800;
-    let height = 800;
     let canvas = document.getElementById("myCanvas");
     canvas.height = height;
     canvas.width = width;
