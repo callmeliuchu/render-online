@@ -3,10 +3,8 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
-    <canvas id="uvCanvas" width="400" height="400" style="border:1px solid #000000;">
-        <img src="african_diffuse1.jpg" id="uv"></img>
-    </canvas>
-    <canvas id="uv1Canvas" width="400" height="400" style="border:1px solid #000000;">
+    <canvas id="uvCanvas"  style="border:1px solid #000000;">
+        <img src="./african_diffuse1.jpg" id="uv"></img>
     </canvas>
 </div>
 <script src="obj.js" ></script>
@@ -30,21 +28,14 @@
 <script>
     let width = 400;
     let height = 400;
-
     let uvcanvas = document.getElementById("uvCanvas");
     var ctxt = uvcanvas.getContext('2d');
     var img = document.getElementById("uv");
-    ctxt.drawImage(img, 0,0, width, height);
-    let uvData = ctxt.getImageData(0, 0, width, height);
-
-    console.log(uvData);
-    let uvcanvas1 = document.getElementById("uv1Canvas");
-    var ctxt1 = uvcanvas1.getContext('2d');
-    ctxt1.putImageData(uvData, 0, 0);
-    
-
-    // img.src = 'african_diffuse1.jpg';//src也可以是从文件选择控件中取得。
-    
+    uvcanvas.width = width;
+    uvcanvas.height = height;
+    console.log(img.width+" "+img.height);
+    ctxt.drawImage(img, 0,0, width,height);
+    let uvData = ctxt.getImageData(0, 0, width, height);    
 </script>
 
 
@@ -229,7 +220,6 @@
         )
     }
 
-    
     let viewMatrix = view();
     // let M = viewMatrix.multi();
     let time = 100;
@@ -241,10 +231,10 @@
     r_vec = r_vec.normal();
 
     class Color{
-        constructor(val){
-            this.r = val;
-            this.g = val;
-            this.b = val;  
+        constructor(val1,val2,val3){
+            this.r = val1;
+            this.g = val2;
+            this.b = val3;  
         }
         set(val){
             this.r = val;
@@ -277,6 +267,43 @@
             return new Color(intensity * 255);
         }
     }
+
+
+    class UVShader{
+        constructor(M,MIT){
+            this.light_vec = light_vec;
+            this.intensities = new Vec(3);
+            this.M = M;
+            this.MIT = MIT;
+            this.uvs = [];
+        }
+        vertex(f_id,nthvertex){
+            let uv_coord = loader.getUV(f_id,nthvertex);
+            let uu = parseInt(uv_coord[0]*width+0.5);
+            let vv = height-parseInt(uv_coord[1]*height+0.5);
+            let idx = uu + vv * width;
+            idx = idx*4;
+            // console.log(uu+" "+vv+" "+idx);
+            let color = [uvData.data[idx],uvData.data[idx+1],uvData.data[idx+2]];
+            this.uvs[nthvertex] = color;
+
+            // let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
+            // nn = nn.div(nn.arr[3]).normal();
+            // this.intensities.arr[nthvertex] = Math.max(light_vec.dot(nn),0);
+            let v = loader.getVertex(f_id,nthvertex);
+            let vec = new Vec(v);
+            vec = vec.embed(4);
+            let screen_coord = this.M.multi(vec);
+            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+            return  screen_coord;
+        }
+
+        fragment(binary){
+            let uvs = new Matrix(this.uvs);
+            let color = uvs.transpose().multi(binary);
+            return new Color(color.arr[0],color.arr[1],color.arr[2]);
+        }
+    }
     setInterval(() => {
         let imgdata = ctx.createImageData(width, height);
         let zbuffer = [];
@@ -288,7 +315,7 @@
         let MIT = MX.inverse().transpose();
         time += 5;
 
-        shader = new Shader(M,MIT);
+        shader = new UVShader(M,MIT);
         for(let k=0;k<loader.faces.length;k++){
                 let screens = [];
                 for(let i=0;i<3;i++){

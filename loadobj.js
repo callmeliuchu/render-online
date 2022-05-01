@@ -8,6 +8,7 @@ class Loader{
         this.min_position = [1000,1000,1000]
         this.center = []
         this.vns = [];
+        this.vts = [];
         this.init();
       }
     
@@ -46,6 +47,13 @@ class Loader{
                 }
                 this.vns.push(arr);
             }
+            if(s.startsWith("vt ")){
+                let arr = [];
+                for(let num of s.substr(4,s.length-4).split(" ")){
+                    arr.push(parseFloat(num));
+                }
+                this.vts.push([arr[0],arr[1]]);
+            }
         }
         for(let i=0;i<3;i++){
             this.center[i] = (this.max_position[i]+this.min_position[i])/2;
@@ -56,8 +64,13 @@ class Loader{
         return this.vertexs[this.faces[f_id][nth_idx][0]];
     }
 
+    getUV(f_id,nth_idx){
+        return this.vts[this.faces[f_id][nth_idx][1]];
+    }
+
     getNormal(f_id,nth_idx){
         return this.vns[this.faces[f_id][nth_idx][2]];
     }
+
 
 }
