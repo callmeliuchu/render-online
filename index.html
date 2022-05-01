@@ -4,7 +4,10 @@
     style="border:1px solid #000000;">
     </canvas>
     <canvas id="uvCanvas"  style="display: none;">
-        <img src="./african_diffuse.jpg" id="uv"></img>
+        <img src="./african_diffuse1.jpg" id="uv"></img>
+    </canvas>
+    <canvas id="nmCanvas"  style="display: none;">
+        <img src="./african_nm.jpg" id="nm"></img>
     </canvas>
 </div>
 <script src="obj.js" ></script>
@@ -28,16 +31,22 @@
 <script>
     let width =  800;
     let height = 800;
-    let uvcanvas = document.getElementById("uvCanvas");
-    var ctxt = uvcanvas.getContext('2d');
-    var img = document.getElementById("uv");
     let img_width = 800;
     let img_height = 800;
-    uvcanvas.width = img_width;
-    uvcanvas.height = img_height;
-    console.log(img.width+" "+img.height);
-    ctxt.drawImage(img, 0,0, img_width,img_height);
-    let uvData = ctxt.getImageData(0, 0, img_width, img_height);  
+
+    function getUVImageData(name){
+        let uvcanvas = document.getElementById(name+"Canvas");
+        var ctxt = uvcanvas.getContext('2d');
+        var img = document.getElementById(name);
+        uvcanvas.width = img_width;
+        uvcanvas.height = img_height;
+        console.log(img.width+" "+img.height);
+        ctxt.drawImage(img, 0,0, img_width,img_height);
+        let uvData = ctxt.getImageData(0, 0, img_width, img_height);  
+        return uvData;
+    }
+    let uvData = getUVImageData("uv");
+    let nmData = getUVImageData("nm");
 </script>
 
 
@@ -237,7 +246,7 @@
         }
     }
 
-    function diffuseUV(uv_coord){
+    function getUVData(uv_coord,uvData){
         let uu = parseInt(uv_coord[0]*img_width+0.5);
         let vv = img_height-parseInt(uv_coord[1]*img_height+0.5);
         let idx = uu + vv * img_width;
@@ -246,12 +255,23 @@
         return [uvData.data[idx],uvData.data[idx+1],uvData.data[idx+2]];
     }
 
+    function diffuseUV(uv_coord){
+        return getUVData(uv_coord,uvData);
+    }
+
+    function normalUV(uv_coord){
+        let color = new Vec(getUVData(uv_coord,nmData));
+        color = color.div(255).multi(2).sub(1);
+        return color.arr;
+    }
+
     class Shader{
-        constructor(M,MIT){
+        constructor(M,RMP,MIT){
             this.light_vec = light_vec;
             this.intensities = new Vec(3);
             this.M = M;
             this.MIT = MIT;
+            this.RMP = RMP;
         }
         vertex(f_id,nthvertex){
             let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
@@ -274,18 +294,20 @@
 
 
     class UVShader{
-        constructor(M,MIT){
+        constructor(M,RMP,MIT){
             this.light_vec = light_vec;
             this.intensities = new Vec(3);
+            this.RMP = RMP;
             this.M = M;
             this.MIT = MIT;
             this.uvs = [];
         }
         vertex(f_id,nthvertex){
             this.uvs[nthvertex] = loader.getUV(f_id,nthvertex);
-
             let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
-            nn = nn.div(nn.arr[3]).normal();
+            nn = nn.div(nn.arr[3]).proj(3).normal();
+            // light_vec = this.RMP.multi(light_vec.embed(4));
+            // light_vec = light_vec.div(light_vec.arr[3]).proj(3).normal();
             this.intensities.arr[nthvertex] = Math.max(light_vec.dot(nn),0);
             let v = loader.getVertex(f_id,nthvertex);
             let vec = new Vec(v);
@@ -304,6 +326,38 @@
         }
     }
 
+
+    class NMShader{
+        constructor(M,RMP,MIT){
+            this.light_vec = light_vec;
+            this.intensities = new Vec(3);
+            this.RMP = RMP;
+            this.M = M;
+            this.MIT = MIT;
+            this.uvs = [];
+        }
+        vertex(f_id,nthvertex){
+            this.uvs[nthvertex] = loader.getUV(f_id,nthvertex);
+            let v = loader.getVertex(f_id,nthvertex);
+            let vec = new Vec(v);
+            vec = vec.embed(4);
+            let screen_coord = this.M.multi(vec);
+            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+            return  screen_coord;
+        }
+
+        fragment(binary){
+            let uvs = new Matrix(this.uvs);
+            let uv = uvs.transpose().multi(binary);
+            let color = diffuseUV(uv.arr);
+            let nn = this.MIT.multi(new Vec(normalUV(uv.arr)).embed(4));
+            nn = nn.div(nn.arr[3]).proj(3).normal();
+            let intensity = Math.max(0,light_vec.dot(nn));
+            return new Color(color[0]*intensity,color[1]*intensity,color[2]*intensity);
+        }
+    }
+
+
     let viewMatrix = view();
     // let M = viewMatrix.multi();
     let time = 100;
@@ -320,12 +374,12 @@
         for(let i=0;i<width*height;i++){
             zbuffer.push(-1000000);
         }
-        let MX = rotate(r_vec,time).multi(MP);
-        let M = viewMatrix.multi(MX);
-        let MIT = MX.inverse().transpose();
+        let RMP = rotate(r_vec,time).multi(MP);
+        let M = viewMatrix.multi(RMP);
+        let MIT = RMP.inverse().transpose();
         time += 5;
 
-        shader = new UVShader(M,MIT);
+        shader = new NMShader(M,RMP,MIT);
         for(let k=0;k<loader.faces.length;k++){
                 let screens = [];
                 for(let i=0;i<3;i++){

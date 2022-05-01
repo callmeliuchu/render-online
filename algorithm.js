@@ -38,14 +38,22 @@ class Vec{
     add(other){
         let ret = new Vec(this.n);
         for(let i=0;i<this.n;i++){
-            ret.arr[i] = this.arr[i] + other.arr[i];
+            if(typeof other == "number"){
+                ret.arr[i] = this.arr[i] + other;
+            }else{
+                ret.arr[i] = this.arr[i] + other.arr[i];
+            }
         }
         return ret;
     }
     sub(other){
         let ret = new Vec(this.n);
         for(let i=0;i<this.n;i++){
-            ret.arr[i] = this.arr[i] - other.arr[i];
+            if(typeof other == "number"){
+                ret.arr[i] = this.arr[i] - other;
+            }else{
+                ret.arr[i] = this.arr[i] - other.arr[i];
+            }
         }
         return ret;
     }
