@@ -9,6 +9,9 @@
     <canvas id="nmCanvas"  style="display: none;">
         <img src="./african_nm.jpg" id="nm"></img>
     </canvas>
+    <canvas id="specCanvas"  style="display: none;">
+        <img src="./african_spec.jpg" id="spec"></img>
+    </canvas>
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
@@ -47,13 +50,14 @@
     }
     let uvData = getUVImageData("uv");
     let nmData = getUVImageData("nm");
+    let specData = getUVImageData("nm");
 </script>
 
 
 <script>
     loader = new Loader(obj_str);
     let light_dir = new Vec([1,1,1]);
-    let eye = new Vec([0,0,2]);
+    let eye = new Vec([1,0,3]);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
     let canvas = document.getElementById("myCanvas");
@@ -265,6 +269,12 @@
         return color.arr;
     }
 
+    function specUV(uv_coord){
+        let color = new Vec(getUVData(uv_coord,specData));
+        return color.arr[0];
+    }
+
+
     class Shader{
         constructor(M,RMP,MIT){
             this.light_vec = light_vec;
@@ -327,7 +337,7 @@
     }
 
 
-    class NMShader{
+    class NSShader{
         constructor(M,RMP,MIT){
             this.light_vec = light_vec;
             this.intensities = new Vec(3);
@@ -352,8 +362,14 @@
             let color = diffuseUV(uv.arr);
             let nn = this.MIT.multi(new Vec(normalUV(uv.arr)).embed(4));
             nn = nn.div(nn.arr[3]).proj(3).normal();
-            let intensity = Math.max(0,light_vec.dot(nn));
-            return new Color(color[0]*intensity,color[1]*intensity,color[2]*intensity);
+            let r = nn.multi(2*light_vec.dot(nn)).sub(light_vec).normal();
+            let spec = Math.pow(Math.max(r.arr[2],0),specUV(uv.arr));
+            let diffuse = Math.max(0,light_vec.dot(nn));
+            let scale = diffuse + 0.6*spec;
+            for(let i=0;i<3;i++){
+                color[i] = Math.min(5+scale * color[i],255);
+            }
+            return new Color(color[0],color[1],color[2]);
         }
     }
 
@@ -379,7 +395,7 @@
         let MIT = RMP.inverse().transpose();
         time += 5;
 
-        shader = new NMShader(M,RMP,MIT);
+        shader = new NSShader(M,RMP,MIT);
         for(let k=0;k<loader.faces.length;k++){
                 let screens = [];
                 for(let i=0;i<3;i++){
