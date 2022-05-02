@@ -3,7 +3,7 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
-    <canvas id="uvCanvas"  style="">
+    <!-- <canvas id="uvCanvas"  width="200" height="200">
         <img src="./african_diffuse1.jpg" id="uv"></img>
     </canvas>
     <canvas id="nmCanvas"  width="200" height="200">
@@ -11,7 +11,16 @@
     </canvas>
     <canvas id="specCanvas"  width="200" height="200">
         <img src="./african_spec.jpg" id="spec"></img>
+    </canvas> -->
+
+    <canvas id="uvCanvas"  width="200" height="200">
+        <img src="./diablo3_pose_diffuse.jpg" id="uv"></img>
     </canvas>
+    <canvas id="nmCanvas"  width="200" height="200">
+        <img src="./diablo3_pose_nm.jpg" id="nm"></img>
+    </canvas>
+    <canvas id="specCanvas"  width="200" height="200">
+        <img src="./diablo3_pose_spec.jpg" id="spec"></img>
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
@@ -32,8 +41,8 @@
 </script> -->
 
 <script>
-    let width =  400;
-    let height = 400;
+    let width =  800;
+    let height = 800;
     let img_width = 200;
     let img_height = 200;
 
@@ -50,7 +59,7 @@
     }
     let uvData = getUVImageData("uv");
     let nmData = getUVImageData("nm");
-    let specData = getUVImageData("nm");
+    let specData = getUVImageData("spec");
 </script>
 
 
@@ -194,10 +203,11 @@
 
 
     function view(){
+        // width/8, height/8, width*3/4, height*3/4
         // return [width-(v[0]+1)*width/2,height-(v[1]+1)*height/2];
         return new Matrix(
-            [[width/2,0,0,width/2],
-            [0,height/2,0,height/2],
+            [[width*3/4,0,0,width/2],
+            [0,height*3/4,0,height/2],
             [0,0,255/2,255/2],
             [0,0,0,1]]
         );
@@ -375,6 +385,30 @@
     }
 
 
+    class DepthShader{
+        constructor(M,RMP,MIT){
+            this.coords = []
+            this.M = M;
+        }
+
+        vertex(f_id,nthvertex){
+            let v = loader.getVertex(f_id,nthvertex);
+            let vec = new Vec(v);
+            vec = vec.embed(4);
+            let screen_coord = this.M.multi(vec);
+            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+            this.coords[nthvertex] = screen_coord.arr;
+            return  screen_coord;
+        }
+
+        fragment(binary){
+            let mat = new Matrix(this.coords);
+            let xyz = mat.transpose().multi(binary);
+            let c = xyz.arr[2];
+            return new Color(c,c,c);
+        }
+    }
+
     let viewMatrix = view();
     // let M = viewMatrix.multi();
     let time = 100;
@@ -388,6 +422,7 @@
     setInterval(() => {
         let imgdata = ctx.createImageData(width, height);
         let zbuffer = [];
+
         for(let i=0;i<width*height;i++){
             zbuffer.push(-1000000);
         }
@@ -396,7 +431,7 @@
         let MIT = RMP.inverse().transpose();
         time += 5;
 
-        shader = new NSShader(M,RMP,MIT);
+        shader = new Shader(M,RMP,MIT);
         for(let k=0;k<loader.faces.length;k++){
                 let screens = [];
                 for(let i=0;i<3;i++){
