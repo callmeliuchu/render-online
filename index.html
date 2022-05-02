@@ -65,7 +65,7 @@
 
 <script>
     loader = new Loader(obj_str);
-    let light_dir = new Vec([1,1,1]);
+    let light_dir = new Vec([-1,1,1]);
     let eye = new Vec([1,0,3]);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
@@ -115,10 +115,7 @@
         );
         return sqush;
     }
-    function draw_line(bg,ed){
-        ctx.moveTo(bg[0],bg[1]);
-        ctx.lineTo(ed[0],ed[1]);
-    }
+
     function triangle(tris,zbuffer,shader,imgdata){
         let min_x = 1000000;
         let max_x = -1000000;
@@ -202,12 +199,18 @@
     }
 
 
-    function view(){
+    function view(x,y,w,h){
         // width/8, height/8, width*3/4, height*3/4
         // return [width-(v[0]+1)*width/2,height-(v[1]+1)*height/2];
+        // return new Matrix(
+        //     [[width*3/4,0,0,width/2],
+        //     [0,height*3/4,0,height/2],
+        //     [0,0,255/2,255/2],
+        //     [0,0,0,1]]
+        // );
         return new Matrix(
-            [[width*3/4,0,0,width/2],
-            [0,height*3/4,0,height/2],
+            [[w,0,0,x],
+            [0,h,0,y],
             [0,0,255/2,255/2],
             [0,0,0,1]]
         );
@@ -409,39 +412,49 @@
         }
     }
 
-    let viewMatrix = view();
-    // let M = viewMatrix.multi();
-    let time = 100;
-    let modelViewMatrix = modelView(eye);
-    let projMatrix = projection(eye.sub(position).length());
-    let MP = projMatrix.multi(modelViewMatrix);
-    let light_vec = light_dir.normal();
-    let r_vec = new Vec([0,1,0]);
-    r_vec = r_vec.normal();
-
-    setInterval(() => {
-        let imgdata = ctx.createImageData(width, height);
-        let zbuffer = [];
-
-        for(let i=0;i<width*height;i++){
-            zbuffer.push(-1000000);
+    class Render{
+        constructor(x,y,w,h,eye,position,rotate_axis){
+            // x,y,w,h相机照片窗口
+            // eye视点 position 物体位置
+            // rotate_axis绕轴旋转轴
+            this.viewMatrix = view(x,y,w,h);
+            this.time = 0;
+            this.modelViewMatrix = modelView(eye);
+            this.projMatrix = projection(eye.sub(position).length());
+            this.MP = this.projMatrix.multi(this.modelViewMatrix);
+            this.light_vec = light_dir.normal();
+            this.r_vec = rotate_axis.normal();
         }
-        let RMP = rotate(r_vec,time).multi(MP);
-        let M = viewMatrix.multi(RMP);
-        let MIT = RMP.inverse().transpose();
-        time += 5;
 
-        shader = new Shader(M,RMP,MIT);
-        for(let k=0;k<loader.faces.length;k++){
-                let screens = [];
-                for(let i=0;i<3;i++){
-                    screens.push(shader.vertex(k,i));
-                }
-                triangle(screens,zbuffer,shader,imgdata);
+        draw(){
+            // setInterval(() => {
+            let imgdata = ctx.createImageData(width, height);
+            let zbuffer = [];
+
+            for(let i=0;i<width*height;i++){
+                zbuffer.push(-1000000);
             }
-            ctx.putImageData(imgdata, 0, 0);
+            let RMP = rotate(this.r_vec,this.time).multi(this.MP);
+            let M = this.viewMatrix.multi(RMP);
+            let MIT = RMP.inverse().transpose();
+            // time += 5;
+
+            let shader = new DepthShader(M,RMP,MIT);
+            for(let k=0;k<loader.faces.length;k++){
+                    let screens = [];
+                    for(let i=0;i<3;i++){
+                        screens.push(shader.vertex(k,i));
+                    }
+                    triangle(screens,zbuffer,shader,imgdata);
+                }
+                ctx.putImageData(imgdata, 0, 0);
+            }
     }
-    , 100);
+
+    render = new Render(width/2,height/2,3*width/4,3*height/4,eye,position,new Vec([0,1,0]));
+    render.draw();
+    // }
+    // , 100);
 </script>
 
 </html>
