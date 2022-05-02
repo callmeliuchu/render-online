@@ -39,10 +39,10 @@
 
     function getUVImageData(name){
         let uvcanvas = document.getElementById(name+"Canvas");
-        var ctxt = uvcanvas.getContext('2d');
-        var img = document.getElementById(name);
         uvcanvas.width = img_width;
         uvcanvas.height = img_height;
+        var ctxt = uvcanvas.getContext('2d');
+        var img = document.getElementById(name);
         console.log(img.width+" "+img.height);
         ctxt.drawImage(img, 0,0, img_width,img_height);
         let uvData = ctxt.getImageData(0, 0, img_width, img_height);  
