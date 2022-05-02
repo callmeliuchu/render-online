@@ -43,8 +43,8 @@
 <script>
     let width =  800;
     let height = 800;
-    let img_width = 200;
-    let img_height = 200;
+    let img_width = 1024;
+    let img_height = 1024;
 
     function getUVImageData(name){
         let uvcanvas = document.getElementById(name+"Canvas");
@@ -121,7 +121,6 @@
         let max_x = -1000000;
         let min_y = 1000000;
         let max_y = -1000000;
-        // let color = Math.random()*255;
         for(let i=0;i<3;i++){
             let x = parseInt(tris[i].arr[0]);
             let y = parseInt(tris[i].arr[1]);
@@ -140,23 +139,22 @@
         }
         for(let x=min_x;x<=max_x;x++){
             for(let y=min_y;y<=max_y;y++){
-                // console.log(x+" "+y);
                 let center = binary_center(tris,new Vec([x,y,1]));
                 if(center.arr[0] <= 0 || center.arr[1] <= 0 || center.arr[2] <= 0){
                     continue;
                 }
                 let z = center.arr[0] * tris[0].arr[2] + center.arr[1] * tris[1].arr[2] + center.arr[2] * tris[2].arr[2];
                 let color = shader.fragment(center);
-                // console.log(z);
                 let index = x + y * width;
                 if(zbuffer[index] < z){
                     zbuffer[index] = z;
-                    // color = new Color(z,z,z);
-                    let idx = 4*index;
-                    imgdata.data[idx] =  color.r;
-                    imgdata.data[idx+1] = color.g;
-                    imgdata.data[idx+2] = color.b;
-                    imgdata.data[idx+3] = 255;
+                    if(imgdata){
+                        let idx = 4*index;
+                        imgdata.data[idx] =  color.r;
+                        imgdata.data[idx+1] = color.g;
+                        imgdata.data[idx+2] = color.b;
+                        imgdata.data[idx+3] = 255;
+                    }
                 }
 
             }
@@ -413,24 +411,26 @@
     }
 
     class Render{
-        constructor(x,y,w,h,eye,position,rotate_axis){
+        constructor(x,y,w,h,eye,position,rotate_axis,time){
             // x,y,w,h相机照片窗口
             // eye视点 position 物体位置
             // rotate_axis绕轴旋转轴
             this.viewMatrix = view(x,y,w,h);
-            this.time = 0;
+            this.time = time;
             this.modelViewMatrix = modelView(eye);
             this.projMatrix = projection(eye.sub(position).length());
             this.MP = this.projMatrix.multi(this.modelViewMatrix);
             this.light_vec = light_dir.normal();
             this.r_vec = rotate_axis.normal();
         }
-
-        draw(){
+        
+        draw(AShader,is_render){
             // setInterval(() => {
-            let imgdata = ctx.createImageData(width, height);
+            let imgdata = null;
+            if(is_render){
+                imgdata = ctx.createImageData(width, height);
+            }
             let zbuffer = [];
-
             for(let i=0;i<width*height;i++){
                 zbuffer.push(-1000000);
             }
@@ -439,22 +439,98 @@
             let MIT = RMP.inverse().transpose();
             // time += 5;
 
-            let shader = new DepthShader(M,RMP,MIT);
+            let shader = new AShader(M,RMP,MIT);
             for(let k=0;k<loader.faces.length;k++){
-                    let screens = [];
-                    for(let i=0;i<3;i++){
-                        screens.push(shader.vertex(k,i));
-                    }
-                    triangle(screens,zbuffer,shader,imgdata);
+                let screens = [];
+                for(let i=0;i<3;i++){
+                    screens.push(shader.vertex(k,i));
                 }
-                ctx.putImageData(imgdata, 0, 0);
+                triangle(screens,zbuffer,shader,imgdata);
             }
+            if(is_render){
+                ctx.putImageData(imgdata, 0, 0);
+            }      
+            return {'M':M,'zbuffer':zbuffer}
+        }
     }
 
-    render = new Render(width/2,height/2,3*width/4,3*height/4,eye,position,new Vec([0,1,0]));
-    render.draw();
-    // }
-    // , 100);
+    class ShadowShader{
+        constructor(M,RMP,MIT){
+            this.coords = []
+            this.M = M;
+            this.MI = M.inverse();
+            this.MIT = MIT;
+            this.intensities = new Vec(3);
+            this.uvs = [];
+            this.RMP = RMP;
+        }
+
+
+        vertex(f_id,nthvertex){
+            this.uvs[nthvertex] = loader.getUV(f_id,nthvertex);
+
+            let nn = this.MIT.multi(new Vec(loader.getNormal(f_id,nthvertex)).embed(4));
+            nn = nn.div(nn.arr[3]).normal();
+            this.intensities.arr[nthvertex] = Math.max(light_dir.normal().dot(nn),0);
+
+            let v = loader.getVertex(f_id,nthvertex);
+            let vec = new Vec(v);
+            vec = vec.embed(4);
+            let screen_coord = this.M.multi(vec);
+            screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+            this.coords[nthvertex] = screen_coord.arr;
+            return  screen_coord;
+        }
+
+        fragment(binary){
+            let mat = new Matrix(this.coords);
+            let binary_coord = mat.transpose().multi(binary);
+            let origin_coord = this.MI.multi(binary_coord.embed(4));
+            let shadow_binary_coord = Mshadow.multi(origin_coord);
+            shadow_binary_coord = shadow_binary_coord.div(shadow_binary_coord.arr[3]).proj(3);
+            let x = shadow_binary_coord.arr[0];
+            let y = shadow_binary_coord.arr[1];
+            let z = shadow_binary_coord.arr[2];
+            let indx = parseInt(x+y*width);
+            let depth = shadow_buffer[indx];
+            let shadow = 0.3;
+            if(depth < z){
+                shadow += 0.7;
+            }
+            // shadow = 1.0;
+
+            let uvs = new Matrix(this.uvs);
+            let uv = uvs.transpose().multi(binary);
+            let color = diffuseUV(uv.arr);
+            let nn = this.MIT.multi(new Vec(normalUV(uv.arr)).embed(4));
+            nn = nn.div(nn.arr[3]).proj(3).normal();
+            let l = light_vec.normal();
+            // let l = this.RMP.multi(light_vec.embed(4));
+            // l = l.div(l.arr[3]).proj(3).normal();
+            let r = nn.multi(2*l.dot(nn)).sub(l).normal();
+            let spec = Math.pow(Math.max(r.arr[2],0),specUV(uv.arr));
+            let diffuse = Math.max(0,light_vec.dot(nn));
+            let scale = 1.2*diffuse + 0.6*spec;
+            for(let i=0;i<3;i++){
+                color[i] = Math.min(20+scale * shadow * color[i],255);
+            }
+            return new Color(color[0],color[1],color[2]);
+        }
+    }
+    let time = 0;
+    let Mshadow = null;
+    let shadow_buffer = null;
+    let light_vec = light_dir.normal();
+    setInterval(() => {
+    let render1 = new Render(width/2,height/2,3*width/4,3*height/4,light_dir,position,new Vec([0,1,0]),time);
+    let ans1 = render1.draw(DepthShader,false);
+    let render2 = new Render(width/2,height/2,3*width/4,3*height/4,eye,position,new Vec([0,1,0]),time);
+    Mshadow = ans1['M'];
+    shadow_buffer = ans1['zbuffer'];
+    let ans2 = render2.draw(ShadowShader,true);
+    time += 5;
+    }
+    , 100);
 </script>
 
 </html>
