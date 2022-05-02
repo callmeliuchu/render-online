@@ -3,13 +3,13 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
-    <canvas id="uvCanvas"  style="display: none;">
+    <canvas id="uvCanvas"  style="">
         <img src="./african_diffuse1.jpg" id="uv"></img>
     </canvas>
-    <canvas id="nmCanvas"  style="display: none;">
+    <canvas id="nmCanvas"  style="">
         <img src="./african_nm.jpg" id="nm"></img>
     </canvas>
-    <canvas id="specCanvas"  style="display: none;">
+    <canvas id="specCanvas"  style="">
         <img src="./african_spec.jpg" id="spec"></img>
     </canvas>
 </div>
@@ -32,10 +32,10 @@
 </script> -->
 
 <script>
-    let width =  800;
-    let height = 800;
-    let img_width = 800;
-    let img_height = 800;
+    let width =  400;
+    let height = 400;
+    let img_width = 200;
+    let img_height = 200;
 
     function getUVImageData(name){
         let uvcanvas = document.getElementById(name+"Canvas");
@@ -145,6 +145,7 @@
                 let index = x + y * width;
                 if(zbuffer[index] < z){
                     zbuffer[index] = z;
+                    // color = new Color(z,z,z);
                     let idx = 4*index;
                     imgdata.data[idx] =  color.r;
                     imgdata.data[idx+1] = color.g;
