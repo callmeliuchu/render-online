@@ -80,6 +80,10 @@
 
 
 <script>
+    let orig = new Vec([0,0,0]);
+    let x_aixs = new Vec([1,0,0]);
+    let y_aixs = new Vec([0,1,0]);
+    let z_aixs = new Vec([0,0,1]);
     loader = new Loader(objs);
     let min_p = new Vec(loader.min_position);
     let max_p = new Vec(loader.max_position);
@@ -89,7 +93,7 @@
     console.log(max_p.sub(min_p));
 
     let light_dir = new Vec([1,0.5,1]);
-    let eye = new Vec([0,0,3]);
+    let eye = new Vec([1,0,1]);
     // let position = min_p.add(max_p).div(2);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
@@ -97,6 +101,8 @@
     canvas.height = height;
     canvas.width = width;
     var ctx= canvas.getContext("2d");
+
+
     function dot(v1,v2){
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
@@ -488,6 +494,21 @@
             }
             let RMP = rotate(this.r_vec,this.time).multi(this.MP);
             let M = this.viewMatrix.multi(RMP);
+            let xx = M.multi(x_aixs.embed(4));
+            xx = xx.div(xx.arr[3]).proj(3);
+            let yy = M.multi(y_aixs.embed(4));
+            yy = yy.div(yy.arr[3]).proj(3);
+            let zz = M.multi(z_aixs.embed(4));
+            zz = zz.div(zz.arr[3]).proj(3);
+            let oo = M.multi(orig.embed(4));
+            oo = oo.div(oo.arr[3]).proj(3);
+
+
+
+
+
+
+
             let MIT = RMP.inverse().transpose();
             // time += 5;
 
@@ -501,6 +522,23 @@
             }
             if(is_render){
                 ctx.putImageData(imgdata, 0, 0);
+                ctx.beginPath();
+                ctx.moveTo(oo.arr[0],oo.arr[1]);
+                ctx.lineTo(xx.arr[0],xx.arr[1]);
+    
+
+     
+                ctx.moveTo(oo.arr[0],oo.arr[1]);
+                ctx.lineTo(yy.arr[0],yy.arr[1]);
+
+
+
+                ctx.moveTo(oo.arr[0],oo.arr[1]);
+                ctx.lineTo(zz.arr[0],zz.arr[1]);
+                ctx.stroke();
+                ctx.closePath();
+                
+
             }      
             return {'M':M,'zbuffer':zbuffer}
         }
@@ -556,8 +594,8 @@
             let nn = this.MIT.multi(new Vec(normalUV(uv.arr)).embed(4));
             nn = nn.div(nn.arr[3]).proj(3).normal();
             let l = light_vec.normal();
-            l = this.RMP.multi(light_vec.embed(4));
-            l = l.div(l.arr[3]).proj(3).normal();
+            // l = this.RMP.multi(light_vec.embed(4));
+            // l = l.div(l.arr[3]).proj(3).normal();
             let r = nn.multi(2*l.dot(nn)).sub(l).normal();
             let spec = Math.pow(Math.max(r.arr[2],0),specUV(uv.arr));
             let diffuse = Math.max(0,light_vec.dot(nn));
@@ -575,12 +613,16 @@
     let light_vec = light_dir.normal();
     let render1 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
     let ans1 = render1.draw(Shader,true);
+    let rotate_axis = new Vec([1,1,1]);
+
+
+
     function run(){
         
         setInterval(() => {
-            let render2 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
+            let render2 = new Render(width/2, height/2, width/2, height/2,eye,position,rotate_axis,time);
             if('nm' in allData && 'spec' in allData && 'uv' in allData){
-                let render1 = new Render(width/2, height/2, width/2, height/2,light_dir,position,new Vec([0,1,0]),time);
+                let render1 = new Render(width/2, height/2, width/2, height/2,light_dir,position,rotate_axis,time);
                 let ans1 = render1.draw(DepthShader,false);
                 Mshadow = ans1['M'];
                 shadow_buffer = ans1['zbuffer'];
