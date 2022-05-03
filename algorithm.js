@@ -100,6 +100,14 @@ class Vec{
         }
         return ans;
     }
+    min(){
+        return Math.min(this.arr);
+    }
+
+    max(){
+        return Math.max(this.arr);
+    }
+
 }
 
 class Matrix{

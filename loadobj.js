@@ -42,14 +42,18 @@ class Loader{
             }
             if(s.startsWith("vn ")){
                 let arr = [];
-                for(let num of s.substr(4,s.length-4).split(" ")){
+                s = s.substr(3,s.length-3);
+                s = s.trim();
+                for(let num of s.split(" ")){
                     arr.push(parseFloat(num));
                 }
                 this.vns.push(arr);
             }
             if(s.startsWith("vt ")){
                 let arr = [];
-                for(let num of s.substr(4,s.length-4).split(" ")){
+                s = s.substr(3,s.length-3);
+                s = s.trim();
+                for(let num of s.split(" ")){
                     arr.push(parseFloat(num));
                 }
                 this.vts.push([arr[0],arr[1]]);

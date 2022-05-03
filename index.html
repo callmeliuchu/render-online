@@ -41,10 +41,10 @@
 </script> -->
 
 <script>
-    let width =  800;
-    let height = 800;
-    let img_width = 800;
-    let img_height = 800;
+    let width =  400;
+    let height = 400;
+    let img_width = 400;
+    let img_height = 400;
 
     function getUVImageData(name){
         let uvcanvas = document.getElementById(name+"Canvas");
@@ -65,8 +65,16 @@
 
 <script>
     loader = new Loader(obj_str1);
-    let light_dir = new Vec([0,0,-2]);
-    let eye = new Vec([0,0,2]);
+    let min_p = new Vec(loader.min_position);
+    let max_p = new Vec(loader.max_position);
+    console.log(min_p);
+    console.log(max_p);
+    console.log(min_p.add(max_p).div(2));
+    console.log(max_p.sub(min_p));
+
+    let light_dir = new Vec([1,0.5,1]);
+    let eye = new Vec([0,0,3]);
+    // let position = min_p.add(max_p).div(2);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
     let canvas = document.getElementById("myCanvas");
@@ -76,6 +84,34 @@
     function dot(v1,v2){
         return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
     }
+
+    function scaleObj(){
+        let range = max_p.sub(min_p);
+        let p = min_p.add(max_p).div(2);
+        let val = 3/Math.max(range.arr[0],range.arr[1]);
+        let t1 = new Matrix(
+            [
+                [1,0,0,-p.arr[0]],
+                [0,1,0,-p.arr[1]],
+                [0,0,1,-p.arr[2]],
+                [0,0,0,1],
+            ]
+        );
+
+        let s = new Matrix(
+            [
+                [val,0,0,0],
+                [0,val,0,0],
+                [0,0,val,0],
+                [0,0,0,1]
+            ]
+        );
+        return s.multi(t1);
+    }
+    let scaleMatrix = scaleObj();
+    console.log(scaleMatrix);
+
+
 
     function modelView(eye){
         let y_vec = up;
@@ -102,7 +138,7 @@
             [0,0,0,1]
             ]
         );
-        return r.multi(translate);
+        return r.multi(translate).multi(scaleMatrix);
     }
     function projection(c){
         let sqush = new Matrix(
@@ -488,16 +524,15 @@
             let origin_coord = this.MI.multi(binary_coord.embed(4));
             let shadow_binary_coord = Mshadow.multi(origin_coord);
             shadow_binary_coord = shadow_binary_coord.div(shadow_binary_coord.arr[3]).proj(3);
-            let x = shadow_binary_coord.arr[0];
-            let y = shadow_binary_coord.arr[1];
+            let x = parseInt(shadow_binary_coord.arr[0]);
+            let y = parseInt(shadow_binary_coord.arr[1]);
             let z = shadow_binary_coord.arr[2];
-            let indx = parseInt(x+y*width);
+            let indx = x+y*width;
             let depth = shadow_buffer[indx];
-            let shadow = 0.3;
+            let shadow = 0.2;
             if(depth < z){
-                shadow += 0.7;
+                shadow += 1.5;
             }
-            // shadow = 1.0;
 
             let uvs = new Matrix(this.uvs);
             let uv = uvs.transpose().multi(binary);
@@ -512,12 +547,12 @@
             let diffuse = Math.max(0,light_vec.dot(nn));
             let scale = 1.2*diffuse + 0.6*spec;
             for(let i=0;i<3;i++){
-                color[i] = Math.min(20+scale * shadow * color[i],255);
+                color[i] = Math.min(30+scale * shadow * color[i],255);
             }
             return new Color(color[0],color[1],color[2]);
         }
     }
-    let time = 0;
+    let time = 60;
     let Mshadow = null;
     let shadow_buffer = null;
     let light_vec = light_dir.normal();
