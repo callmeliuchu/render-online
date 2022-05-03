@@ -93,7 +93,7 @@
     console.log(max_p.sub(min_p));
 
     let light_dir = new Vec([1,0.5,1]);
-    let eye = new Vec([1,0,1]);
+    let eye = new Vec([-0.3,-0.3,1]);
     // let position = min_p.add(max_p).div(2);
     let position = new Vec([0,0,0]);
     let up = new Vec([0,1,0]);
@@ -110,7 +110,7 @@
     function scaleObj(){
         let range = max_p.sub(min_p);
         let p = min_p.add(max_p).div(2);
-        let val = 3/Math.max(range.arr[0],range.arr[1]);
+        let val = 2/Math.max(range.arr[0],range.arr[1]);
         let t1 = new Matrix(
             [
                 [1,0,0,-p.arr[0]],
@@ -131,7 +131,15 @@
         return s.multi(t1);
     }
     let scaleMatrix = scaleObj();
-    console.log(scaleMatrix);
+    // x_aixs = scaleMatrix.inverse().multi(x_aixs.embed(4));
+    // x_aixs = x_aixs.div(x_aixs.arr[3]).proj(3).normal();
+    // y_aixs = scaleMatrix.inverse().multi(y_aixs.embed(4));
+    // y_aixs = y_aixs.div(y_aixs.arr[3]).proj(3).normal();
+    // z_aixs = scaleMatrix.inverse().multi(z_aixs.embed(4));
+    // z_aixs = z_aixs.div(z_aixs.arr[3]).proj(3).normal();
+    // orig = scaleMatrix.inverse().multi(orig.embed(4));
+    // orig = orig.div(orig.arr[3]).proj(3).normal();
+    // console.log(scaleMatrix);
 
 
 
@@ -160,7 +168,7 @@
             [0,0,0,1]
             ]
         );
-        return r.multi(translate).multi(scaleMatrix);
+        return r.multi(translate);
     }
     function projection(c){
         let sqush = new Matrix(
@@ -468,6 +476,31 @@
         }
     }
 
+
+    function drawAxis(M,ctx){
+        let x_aixs = new Vec([1,0,0]);
+        let y_aixs = new Vec([0,1,0]);
+        let z_aixs = new Vec([0,0,1]);
+        let xx = M.multi(x_aixs.embed(4));
+        xx = xx.div(xx.arr[3]).proj(3);
+        let yy = M.multi(y_aixs.embed(4));
+        yy = yy.div(yy.arr[3]).proj(3);
+        let zz = M.multi(z_aixs.embed(4));
+        zz = zz.div(zz.arr[3]).proj(3);
+        let oo = M.multi(orig.embed(4));
+        oo = oo.div(oo.arr[3]).proj(3);
+        ctx.beginPath();
+        ctx.moveTo(oo.arr[0],oo.arr[1]);
+        ctx.lineTo(xx.arr[0],xx.arr[1]);
+        ctx.moveTo(oo.arr[0],oo.arr[1]);
+        ctx.lineTo(yy.arr[0],yy.arr[1]);
+        ctx.moveTo(oo.arr[0],oo.arr[1]);
+        ctx.lineTo(zz.arr[0],zz.arr[1]);
+        ctx.stroke();
+        ctx.closePath();
+
+    }
+
     class Render{
         constructor(x,y,w,h,eye,position,rotate_axis,time){
             // x,y,w,h相机照片窗口
@@ -494,14 +527,9 @@
             }
             let RMP = rotate(this.r_vec,this.time).multi(this.MP);
             let M = this.viewMatrix.multi(RMP);
-            let xx = M.multi(x_aixs.embed(4));
-            xx = xx.div(xx.arr[3]).proj(3);
-            let yy = M.multi(y_aixs.embed(4));
-            yy = yy.div(yy.arr[3]).proj(3);
-            let zz = M.multi(z_aixs.embed(4));
-            zz = zz.div(zz.arr[3]).proj(3);
-            let oo = M.multi(orig.embed(4));
-            oo = oo.div(oo.arr[3]).proj(3);
+            let coordMatrix = M;
+            RMP = RMP.multi(scaleMatrix);
+            M = M.multi(scaleMatrix);
 
 
 
@@ -522,23 +550,8 @@
             }
             if(is_render){
                 ctx.putImageData(imgdata, 0, 0);
-                ctx.beginPath();
-                ctx.moveTo(oo.arr[0],oo.arr[1]);
-                ctx.lineTo(xx.arr[0],xx.arr[1]);
-    
-
-     
-                ctx.moveTo(oo.arr[0],oo.arr[1]);
-                ctx.lineTo(yy.arr[0],yy.arr[1]);
-
-
-
-                ctx.moveTo(oo.arr[0],oo.arr[1]);
-                ctx.lineTo(zz.arr[0],zz.arr[1]);
-                ctx.stroke();
-                ctx.closePath();
-                
-
+                drawAxis(coordMatrix,ctx);
+                drawAxis(this.viewMatrix.multi(this.MP),ctx);
             }      
             return {'M':M,'zbuffer':zbuffer}
         }
@@ -608,12 +621,13 @@
     }
     
     let Mshadow = null;
+    let rotate_axis = new Vec([1,0,1]);
     let shadow_buffer = null;
     let time = 0;
     let light_vec = light_dir.normal();
-    let render1 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
+    let render1 = new Render(width/2, height/2, width/2, height/2,eye,position,rotate_axis,time);
     let ans1 = render1.draw(Shader,true);
-    let rotate_axis = new Vec([1,1,1]);
+ 
 
 
 
