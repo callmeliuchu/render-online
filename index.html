@@ -3,6 +3,7 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
+    <button onclick="run()">运行</button>
     <!-- <canvas id="uvCanvas"  width="200" height="200">
         <img src="./african_diffuse1.jpg" id="uv"></img>
     </canvas>
@@ -14,13 +15,13 @@
     </canvas> -->
 
     <canvas id="uvCanvas"  width="200" height="200">
-        <img src="./diablo3_pose_diffuse.jpg" id="uv"></img>
+        <img  id="uv"></img>
     </canvas>
     <canvas id="nmCanvas"  width="200" height="200">
-        <img src="./diablo3_pose_nm.jpg" id="nm"></img>
+        <img  id="nm"></img>
     </canvas>
     <canvas id="specCanvas"  width="200" height="200">
-        <img src="./diablo3_pose_spec.jpg" id="spec"></img>
+        <img  id="spec"></img>
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
@@ -46,25 +47,40 @@
     let img_width = 400;
     let img_height = 400;
 
-    function getUVImageData(name){
-        let uvcanvas = document.getElementById(name+"Canvas");
+    let allData = {};
+    function getUVImageData(mapping){
+        let uvcanvas = document.getElementById(mapping['name']+"Canvas");
         uvcanvas.width = img_width;
         uvcanvas.height = img_height;
         var ctxt = uvcanvas.getContext('2d');
-        var img = document.getElementById(name);
+        var img = document.getElementById(mapping['name']);
+        img.onload = ()=> {
+            ctxt.drawImage(img, 0,0, img_width,img_height);
+            allData[mapping['name']] = ctxt.getImageData(0, 0, img_width, img_height);  
+        }
+        if(mapping['file_name'].length!=''){
+            img.src = mapping['file_name'];
+        }
         console.log(img.width+" "+img.height);
-        ctxt.drawImage(img, 0,0, img_width,img_height);
-        let uvData = ctxt.getImageData(0, 0, img_width, img_height);  
-        return uvData;
     }
-    let uvData = getUVImageData("uv");
-    let nmData = getUVImageData("nm");
-    let specData = getUVImageData("spec");
+    // getUVImageData({'name':'uv','file_name':'diablo3_pose_diffuse.jpg'});
+    // getUVImageData({'name':'nm','file_name':'diablo3_pose_nm.jpg'});
+    // getUVImageData({'name':'spec','file_name':'diablo3_pose_spec.jpg'});
+    // let objs = obj_str1;
+
+    getUVImageData({'name':'uv','file_name':'MC003_Kozakura_Mari.png'});
+    let objs = obj_str2;
+
+    // getUVImageData({'name':'uv','file_name':'african_diffuse1.jpg'});
+    // getUVImageData({'name':'nm','file_name':'african_nm.jpg'});
+    // getUVImageData({'name':'spec','file_name':'african_spec.jpg'});
+    // let objs = obj_str;
+
 </script>
 
 
 <script>
-    loader = new Loader(obj_str1);
+    loader = new Loader(objs);
     let min_p = new Vec(loader.min_position);
     let max_p = new Vec(loader.max_position);
     console.log(min_p);
@@ -308,17 +324,17 @@
     }
 
     function diffuseUV(uv_coord){
-        return getUVData(uv_coord,uvData);
+        return getUVData(uv_coord,allData['uv']);
     }
 
     function normalUV(uv_coord){
-        let color = new Vec(getUVData(uv_coord,nmData));
+        let color = new Vec(getUVData(uv_coord,allData['nm']));
         color = color.div(255).multi(2).sub(1);
         return color.arr;
     }
 
     function specUV(uv_coord){
-        let color = new Vec(getUVData(uv_coord,specData));
+        let color = new Vec(getUVData(uv_coord,allData['spec']));
         return color.arr[0];
     }
 
@@ -529,43 +545,56 @@
             let z = shadow_binary_coord.arr[2];
             let indx = x+y*width;
             let depth = shadow_buffer[indx];
-            let shadow = 0.2;
+            let shadow = 0.5;
             if(depth < z){
-                shadow += 1.5;
+                shadow += 0.5;
             }
-
+            // shadow = 1.0;
             let uvs = new Matrix(this.uvs);
             let uv = uvs.transpose().multi(binary);
             let color = diffuseUV(uv.arr);
             let nn = this.MIT.multi(new Vec(normalUV(uv.arr)).embed(4));
             nn = nn.div(nn.arr[3]).proj(3).normal();
             let l = light_vec.normal();
-            // let l = this.RMP.multi(light_vec.embed(4));
-            // l = l.div(l.arr[3]).proj(3).normal();
+            l = this.RMP.multi(light_vec.embed(4));
+            l = l.div(l.arr[3]).proj(3).normal();
             let r = nn.multi(2*l.dot(nn)).sub(l).normal();
             let spec = Math.pow(Math.max(r.arr[2],0),specUV(uv.arr));
             let diffuse = Math.max(0,light_vec.dot(nn));
-            let scale = 1.2*diffuse + 0.6*spec;
+            let scale = diffuse + 0.6*spec;
             for(let i=0;i<3;i++){
-                color[i] = Math.min(30+scale * shadow * color[i],255);
+                color[i] = Math.min(10+scale * shadow * color[i],255);
             }
             return new Color(color[0],color[1],color[2]);
         }
     }
-    let time = 60;
+    
     let Mshadow = null;
     let shadow_buffer = null;
+    let time = 0;
     let light_vec = light_dir.normal();
-    setInterval(() => {
-    let render1 = new Render(width/2, height/2, width/2, height/2,light_dir,position,new Vec([0,1,0]),time);
-    let ans1 = render1.draw(DepthShader,false);
-    let render2 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
-    Mshadow = ans1['M'];
-    shadow_buffer = ans1['zbuffer'];
-    let ans2 = render2.draw(ShadowShader,true);
-    time += 5;
+    let render1 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
+    let ans1 = render1.draw(Shader,true);
+    function run(){
+        
+        setInterval(() => {
+            let render2 = new Render(width/2, height/2, width/2, height/2,eye,position,new Vec([0,1,0]),time);
+            if('nm' in allData && 'spec' in allData && 'uv' in allData){
+                let render1 = new Render(width/2, height/2, width/2, height/2,light_dir,position,new Vec([0,1,0]),time);
+                let ans1 = render1.draw(DepthShader,false);
+                Mshadow = ans1['M'];
+                shadow_buffer = ans1['zbuffer'];
+                let ans2 = render2.draw(ShadowShader,true);
+            }else if('uv' in allData){
+                let ans2 = render2.draw(UVShader,true);
+            }else{
+                let ans2 = render2.draw(Shader,true);
+            }
+            time += 5;
+            }
+        , 100);
     }
-    , 100);
+
 </script>
 
 </html>
