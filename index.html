@@ -42,8 +42,8 @@
 </script> -->
 
 <script>
-    let width =  800;
-    let height = 800;
+    let width =  400;
+    let height = 400;
     let img_width = 400;
     let img_height = 400;
 
@@ -68,7 +68,7 @@
     // getUVImageData({'name':'spec','file_name':'diablo3_pose_spec.jpg'});
     // let objs = obj_str1;
 
-    getUVImageData({'name':'uv','file_name':'african_diffuse.jpg'});
+    getUVImageData({'name':'uv','file_name':'MC003_Kozakura_Mari.png'});
     let objs = obj_str2;
 
     // getUVImageData({'name':'uv','file_name':'african_diffuse1.jpg'});
@@ -444,8 +444,10 @@
             this.intensities = new Vec(3);
             this.RMP = RMP;
             this.M = M;
+            this.MI = M.inverse();
             this.MIT = MIT;
             this.uvs = [];
+            this.coords = []
         }
         vertex(f_id,nthvertex){
             this.uvs[nthvertex] = loader.getUV(f_id,nthvertex);
@@ -459,11 +461,26 @@
             vec = vec.embed(4);
             let screen_coord = this.M.multi(vec);
             screen_coord = screen_coord.div(screen_coord.arr[3]).proj(3);
+            this.coords[nthvertex] = screen_coord.arr;
             return  screen_coord;
         }
 
         fragment(binary,x,y){
-            let intensity = this.intensities.dot(binary);
+            let mat = new Matrix(this.coords);
+            let binary_coord = mat.transpose().multi(binary);
+            let origin_coord = this.MI.multi(binary_coord.embed(4));
+            let shadow_binary_coord = Mshadow.multi(origin_coord);
+            shadow_binary_coord = shadow_binary_coord.div(shadow_binary_coord.arr[3]).proj(3);
+            let xx = parseInt(shadow_binary_coord.arr[0]);
+            let yy = parseInt(shadow_binary_coord.arr[1]);
+            let zz = shadow_binary_coord.arr[2];
+            let indx = xx+yy*width;
+            let depth = shadow_buffer[indx];
+            let shadow = 0.8;
+            if(depth < zz){
+                shadow += 0.2;
+            }
+            let intensity = this.intensities.dot(binary)*shadow;
             let uvs = new Matrix(this.uvs);
             let uv = uvs.transpose().multi(binary);
             let color = diffuseUV(uv.arr);
@@ -697,7 +714,7 @@
 
     function calcAngle(zbuffer,p,dir){
         let ans = 0;
-        for(let k=1;k<50;k++){
+        for(let k=1;k<10;k++){
             let q = p.add(dir.multi(k));
             if(q.arr[0] < 0 || q.arr[1] < 0 || q.arr[0] >= width || q.arr[1] >= height){
                 return ans;
@@ -743,7 +760,6 @@
             // console.log(f);
             f = Math.pow(f,500);
             zbuffer[index] = f;
-            console.log(f);
             let idx = 4*index;
             imgdata.data[idx] =  f * 255;
             imgdata.data[idx+1] =  f * 255;
@@ -803,12 +819,13 @@
                 zbuffer[index] = f;
             }
         }
-        if('nm' in allData && 'spec' in allData && 'uv' in allData){
-            let render1 = new Render(width, height,light_dir,position,rotate_axis,time);
-            let ans1 = render1.draw(DepthShader,false);
 
-            Mshadow = ans1['M'];
-            shadow_buffer = ans1['zbuffer'];
+        let render1 = new Render(width, height,light_dir,position,rotate_axis,time);
+        let ans1 = render1.draw(DepthShader,false);
+
+        Mshadow = ans1['M'];
+        shadow_buffer = ans1['zbuffer'];
+        if('nm' in allData && 'spec' in allData && 'uv' in allData){
             let ans2 = render2.draw(NSShader,true);
         }else if('uv' in allData){
             let ans2 = render2.draw(UVShader,true);
