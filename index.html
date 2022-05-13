@@ -3,7 +3,8 @@
     <canvas id="myCanvas" 
     style="border:1px solid #000000;">
     </canvas>
-    <button onclick="run()">运行</button>
+    <button onclick="run()">纹理贴图</button>
+    <!-- <button onclick="rayTracing()">光线追踪demo</button> -->
     <!-- <canvas id="uvCanvas"  width="200" height="200">
         <img src="./african_diffuse1.jpg" id="uv"></img>
     </canvas>
@@ -14,6 +15,11 @@
         <img src="./african_spec.jpg" id="spec"></img>
     </canvas> -->
 
+    <canvas id="myCanvas1" 
+    style="border:1px solid #000000;" width="400" height="400">
+    </canvas>
+    <button onclick="rayTracing();">光线追踪demo</button>
+
     <canvas id="uvCanvas"  width="200" height="200">
         <img  id="uv"></img>
     </canvas>
@@ -22,10 +28,12 @@
     </canvas>
     <canvas id="specCanvas"  width="200" height="200">
         <img  id="spec"></img>
+
 </div>
 <script src="obj.js" ></script>
 <script src="loadobj.js" ></script>
 <script src="algorithm.js" ></script>
+<script src="rtt.js"></script>
 <!-- <script>
     let mat = new Matrix(
         [
@@ -739,7 +747,7 @@
     let time = 0;
     let light_vec = light_dir.normal();
 
-    // setInterval(() => {
+    let inId = setInterval(() => {
     let render1 = new Render(width, height,eye,position,rotate_axis,time);
     let ans1 = render1.draw(DepthShader,false);
     let zbuffer = ans1['zbuffer'];
@@ -769,19 +777,12 @@
     }
 
     ctx.putImageData(imgdata, 0, 0);
-    //     time += 5;
-    // },100)
-
-
-
-
-
-
-
+        time += 5;
+    },100)
 
 
     function run(){
-        
+    window.clearInterval(inId);
     setInterval(() => {
         // eye = eye.sub(new Vec([0,0,0.1]));
         // let e_p_l = eye.sub(position).length();
@@ -830,7 +831,7 @@
         }else if('uv' in allData){
             let ans2 = render2.draw(UVShader,true);
         }else{
-            let ans2 = render2.draw(Shader,true);
+            let ans2 = render2.draw(DepthShader,true);
             }
         time += 5;
 
